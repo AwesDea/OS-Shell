@@ -63,7 +63,6 @@ void singleExec(char **argv, int exec)
         {
             new_args[i - 1] = argv[i];
         }
-        printf("heylooow %s", new_args[0]);
         execvp(new_args[0], new_args);
 
         perror(COLOR_BOLD_RED "invalid input\n" COLOR_DEFAULT);
@@ -77,11 +76,11 @@ void singleExec(char **argv, int exec)
     }
     else if (pid == 0)
     { // child
-        printf(COLOR_BOLD_GREEN "child is here\n" COLOR_DEFAULT);
+        printf("child is here\n");
 
         execvp(argv[0], argv);
 
-        perror(COLOR_BOLD_RED "invalid input\n" COLOR_DEFAULT);
+        perror(COLOR_BOLD_RED "invalid input\n");
         exit(EXIT_FAILURE);
     }
     else
@@ -93,6 +92,69 @@ void singleExec(char **argv, int exec)
     }
 }
 
+void pipeExec(char **buf, int command_count)
+{
+    int fd[command_count + 1][2], pc;
+    char *argv[100];
+
+    for (int i = 0; i < command_count; i++)
+    {
+        pc = tokenize_input(argv, buf[i], " ");
+        if (i < command_count - 1)
+        {
+            if (pipe(fd[i]) < 0)
+            {
+                printf(COLOR_BOLD_RED "Pipe: Creation failed\n");
+                return;
+            }
+        }
+        pid_t pid = fork();
+        if (pid == 0)
+        { // child
+            if (i == command_count - 1)
+            {
+                dup2(fd[i - 1][0], 0);
+                close(fd[i - 1][1]);
+                close(fd[i - 1][0]);
+            }
+
+            if (i == 0)
+            {
+                dup2(fd[i][1], 1);
+                close(fd[i][0]);
+                close(fd[i][1]);
+            }
+            else
+            {
+                dup2(fd[i][1], 1);
+                close(fd[i][0]);
+                close(fd[i][1]);
+                dup2(fd[i - 1][0], 0);
+                close(fd[i - 1][1]);
+                close(fd[i - 1][0]);
+            }
+
+            execvp(argv[0], argv);
+            perror("invalid input ");
+            exit(1); // in case exec is not successfull, exit
+        }
+        else if (pid < 0)
+        {
+            perror(COLOR_BOLD_RED "process creation error.\n" COLOR_DEFAULT);
+            exit(EXIT_FAILURE);
+        }
+
+        else
+        { // parent
+            if (i != 0)
+            {
+                close(fd[i - 1][0]);
+                close(fd[i - 1][1]);
+            }
+        }
+        wait(NULL);
+    }
+}
 
 void printInfo()
 {
@@ -112,7 +174,7 @@ void handleInput(char *input)
     if (strchr(input, '|'))
     {
         int param_count = tokenize_input(buf, input, "|");
-        // pipeExec(buf, param_count);
+        pipeExec(buf, param_count);
     }
     else
     {
@@ -138,13 +200,17 @@ void handleInput(char *input)
 int main()
 {
     init();
-    printInfo();
-    char input[512];
-    // scanf("%s", input);
-    fgets(input, 512, stdin);
-    printf("%s", input);
+    while (1)
+    {
+        printInfo();
 
-    handleInput(input);
+        char input[512];
+
+        fgets(input, 512, stdin);
+        // printf("%s", input);
+
+        handleInput(input);
+    }
 
     return EXIT_SUCCESS;
 }
