@@ -54,118 +54,45 @@ int tokenize_input(char **par, char *input, const char *c)
     return counter;
 }
 
-// void executeBasic(char **argv)
-// {
-//     if (fork() > 0)
-//     {
-//         // parent
-//         wait(NULL);
-//     }
-//     else
-//     {
-//         // child
-//         execvp(argv[0], argv);
-//         // in case exec is not successfull, exit
-//         perror(ANSI_COLOR_RED "invalid input" ANSI_COLOR_RESET "\n");
-//         exit(1);
-//     }
-// }
-
-void pipeExec(char **buf, int command_count)
+void singleExec(char **argv, int exec)
 {
-    int fd[command_count + 1][2], pc;
-    char *argv[100];
-
-    for (int i = 0; i < command_count; i++)
+    if (exec)
     {
-        pc = tokenize_input(argv, buf[i], " ");
-        if (i < command_count - 1)
+        char *new_args[100];
+        for (int i = 1; i < sizeof(argv); i++)
         {
-            if (pipe(fd[i]) < 0)
-            {
-                printf(COLOR_BOLD_RED "Pipe: Creation failed\n");
-                return;
-            }
+            new_args[i - 1] = argv[i];
         }
-        pid_t pid = fork();
-        if (pid == 0)
-        { // child
-            if (i < command_count - 1)
-            {
-                dup2(fd[i][1], 1);
-                close(fd[i][0]);
-                close(fd[i][1]);
-            }
+        printf("heylooow %s", new_args[0]);
+        execvp(new_args[0], new_args);
 
-            if (i != 0)
-            {
-                dup2(fd[i - 1][0], 0);
-                close(fd[i - 1][1]);
-                close(fd[i - 1][0]);
-            }
-            execvp(argv[0], argv);
-            perror("invalid input ");
-            exit(1); // in case exec is not successfull, exit
-        }
-        else
-        { // parent
-            close(fd[i - 1][0]);
-            close(fd[i - 1][1]);
-        }
+        perror(COLOR_BOLD_RED "invalid input\n" COLOR_DEFAULT);
+        exit(EXIT_FAILURE);
+    }
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        perror(COLOR_BOLD_RED "process creation error.\n" COLOR_DEFAULT);
+        exit(EXIT_FAILURE);
+    }
+    else if (pid == 0)
+    { // child
+        printf(COLOR_BOLD_GREEN "child is here\n" COLOR_DEFAULT);
+
+        execvp(argv[0], argv);
+
+        perror(COLOR_BOLD_RED "invalid input\n" COLOR_DEFAULT);
+        exit(EXIT_FAILURE);
+    }
+    else
+    { // parent
+
+        printf("parents is gonna wait\n");
         wait(NULL);
+        printf("parents is done with waiting\n");
     }
 }
 
-// void executeRedirect(char **buf, int nr, int mode)
-// {
-//     int pc, fd;
-//     char *argv[100];
-//     removeWhiteSpace(buf[1]);
-//     tokenize_input(argv, &pc, buf[0], " ");
-//     if (fork() == 0)
-//     {
-
-//         switch (mode)
-//         {
-//         case INPUT:
-//             fd = open(buf[1], O_RDONLY);
-//             break;
-//         case OUTPUT:
-//             fd = open(buf[1], O_WRONLY);
-//             break;
-//         case APPEND:
-//             fd = open(buf[1], O_WRONLY | O_APPEND);
-//             break;
-//         default:
-//             return;
-//         }
-
-//         if (fd < 0)
-//         {
-//             perror("cannot open file\n");
-//             return;
-//         }
-
-//         switch (mode)
-//         {
-//         case INPUT:
-//             dup2(fd, 0);
-//             break;
-//         case OUTPUT:
-//             dup2(fd, 1);
-//             break;
-//         case APPEND:
-//             dup2(fd, 1);
-//             break;
-//         default:
-//             return;
-//         }
-//         execvp(argv[0], argv);
-//         perror("invalid input ");
-//         exit(1); // in case exec is not successfull, exit
-//     }
-//     wait(NULL);
-// }
 
 void printInfo()
 {
@@ -181,10 +108,30 @@ void handleInput(char *input)
 {
 
     char *buf[100];
+    char *params[100];
     if (strchr(input, '|'))
     {
         int param_count = tokenize_input(buf, input, "|");
-        pipeExec(buf, param_count);
+        // pipeExec(buf, param_count);
+    }
+    else
+    {
+        tokenize_input(params, input, " ");
+
+        if (strstr(params[0], "cd"))
+        { // cd builtin command
+            chdir(params[1]);
+        }
+        else if (strstr(params[0], "exec"))
+        {
+            singleExec(params, 1);
+        }
+
+        else
+        {
+
+            singleExec(params, 0);
+        }
     }
 }
 
@@ -195,7 +142,8 @@ int main()
     char input[512];
     // scanf("%s", input);
     fgets(input, 512, stdin);
-    // printf("%s", input);
+    printf("%s", input);
+
     handleInput(input);
 
     return EXIT_SUCCESS;
