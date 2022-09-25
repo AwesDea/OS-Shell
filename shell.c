@@ -118,7 +118,7 @@ void pipeExec(char **buf, int command_count)
                 close(fd[i - 1][0]);
             }
 
-            if (i == 0)
+            else if (i == 0)
             {
                 dup2(fd[i][1], 1);
                 close(fd[i][0]);
@@ -144,14 +144,14 @@ void pipeExec(char **buf, int command_count)
             exit(EXIT_FAILURE);
         }
 
-        else
-        { // parent
-            if (i != 0)
-            {
-                close(fd[i - 1][0]);
-                close(fd[i - 1][1]);
-            }
+        // else
+        // { // parent
+        if (i != 0)
+        {
+            close(fd[i - 1][0]);
+            close(fd[i - 1][1]);
         }
+        // }
         wait(NULL);
     }
 }
