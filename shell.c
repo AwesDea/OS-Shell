@@ -54,12 +54,88 @@ int tokenize_input(char **par, char *input, const char *c)
     return counter;
 }
 
-void singleExec(char **argv, int exec)
+int checkRedirection(char **command, int pc)
 {
+    int index = 0;
+    int fd = 0;
+    int count = pc;
+
+    for (size_t i = 0; i < count; i++)
+    {
+        printf("%s", command[i]);
+
+        if (command[i] == '>')
+        {
+            if (i < count - 1)
+            {
+                if ((fd = open(command[i + 1], O_WRONLY | O_CREAT)) < 0)
+                {
+                    perror("command cannot open file\n");
+                    return -1;
+                }
+                dup2(fd, 1);
+                if (index == 0)
+                    index = i;
+            }
+            perror("syntax error near unexpected token `newline'\n");
+            return -1;
+        }
+        else if (command[i] == '>>')
+        {
+            if (i < count - 1)
+            {
+                if ((fd = open(command[i + 1], O_WRONLY | O_APPEND | O_CREAT)) < 0)
+                {
+                    perror("command cannot open file\n");
+                    return -1;
+                }
+                dup2(fd, 1);
+                if (index == 0)
+                    index = i;
+            }
+            perror("syntax error near unexpected token `newline'\n");
+            return -1;
+        }
+        else if (command == '<')
+        {
+            if (i < count - 1)
+            {
+                if ((fd = open(command[i + 1], O_RDONLY)) < 0)
+                {
+                    perror("command cannot open file\n");
+                    return -1;
+                }
+                dup2(fd, 0);
+                if (index == 0)
+                    index = i;
+            }
+            perror("syntax error near unexpected token `newline'\n");
+            return -1;
+        }
+    }
+    return index;
+}
+
+void singleExec(char **argv, int pc ,int exec)
+{
+    int redirection_flag = 0;
+    int fd = 0;
+    int limiter;
+    if ((limiter = checkRedirection(argv, pc)) < 0)
+    {
+        return;
+    } // if there is input output redirection
+
     if (exec)
     {
         char *new_args[100];
-        for (int i = 1; i < sizeof(argv); i++)
+        int count = sizeof(argv);
+        if (limiter)
+        {
+            count = limiter;
+        }
+
+        for (int i = 1; i < count; i++)
         {
             new_args[i - 1] = argv[i];
         }
@@ -76,7 +152,16 @@ void singleExec(char **argv, int exec)
     }
     else if (pid == 0)
     { // child
-        printf("child is here\n");
+
+        if (limiter)
+        {
+            char **sub_argv = malloc(limiter);
+            for (int i = 0; i < limiter; i++)
+            {
+                sub_argv[i] = argv[i];
+            }
+            execvp(sub_argv[0], sub_argv);
+        }
 
         execvp(argv[0], argv);
 
@@ -86,9 +171,7 @@ void singleExec(char **argv, int exec)
     else
     { // parent
 
-        printf("parents is gonna wait\n");
         wait(NULL);
-        printf("parents is done with waiting\n");
     }
 }
 
@@ -178,7 +261,7 @@ void handleInput(char *input)
     }
     else
     {
-        tokenize_input(params, input, " ");
+        int pc = tokenize_input(params, input, " ");
 
         if (strstr(params[0], "cd"))
         { // cd builtin command
@@ -186,13 +269,12 @@ void handleInput(char *input)
         }
         else if (strstr(params[0], "exec"))
         {
-            singleExec(params, 1);
+            singleExec(params, pc,1);
         }
-
         else
         {
 
-            singleExec(params, 0);
+            singleExec(params, pc,0);
         }
     }
 }
