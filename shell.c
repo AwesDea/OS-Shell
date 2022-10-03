@@ -163,7 +163,7 @@ void singleExec(char *input, int exec)
         int pc = tokenize_input(buf, command, " ");
         execvp(buf[0], buf);
 
-        perror(COLOR_BOLD_RED "invalid input\n");
+        perror(COLOR_BOLD_RED "invalid input\n"COLOR_DEFAULT);
         exit(EXIT_FAILURE);
     }
     else
@@ -211,7 +211,7 @@ void pipeExec(char *input)
         {
             if (pipe(fd[i]) < 0)
             {
-                printf(COLOR_BOLD_RED "Pipe: Creation failed\n");
+                printf(COLOR_BOLD_RED "Pipe: Creation failed\n"COLOR_DEFAULT);
                 return;
             }
         }
@@ -265,7 +265,7 @@ void pipeExec(char *input)
             }
 
             execvp(argv[0], argv);
-            perror("invalid input ");
+            perror(COLOR_BOLD_RED "invalid input " COLOR_DEFAULT);
             exit(1); // in case exec is not successfull, exit
         }
         else if (pid < 0)
@@ -312,8 +312,12 @@ void handleInput(char *input)
         tokenize_input(buf, input, " ");
 
         if (strstr(buf[0], "cd"))
-        { // cd builtin command
+        {
             chdir(buf[1]);
+        }
+        else if (strstr(buf[0], "exit"))
+        {
+            exit(EXIT_SUCCESS);
         }
         else if (strstr(buf[0], "exec"))
         {
