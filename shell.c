@@ -7,10 +7,6 @@
 #include <limits.h>
 #include <sys/wait.h>
 
-#define INPUT 0
-#define OUTPUT 1
-#define APPEND 2
-
 #define COLOR_DEFAULT "\033[1;0m"
 
 #define COLOR_BOLD_GREEN "\033[1;32m"
@@ -152,7 +148,7 @@ void singleExec(char *input, int exec)
     else if (pid == 0)
     { // child
         if (exec)
-            return;
+            exit(1);
 
         char *command = checkRedirection(input);
         if (strcmp(command, "error") == 0)
@@ -161,9 +157,23 @@ void singleExec(char *input, int exec)
         }
         char *buf[100];
         int pc = tokenize_input(buf, command, " ");
+
+        if (strcmp(buf[0], "head") == 0)
+        {
+            execv("./head.o", buf);
+        }
+        if (strcmp(buf[0], "uniq") == 0)
+        {
+            execv("./uniq.o", buf);
+        }
+        if (strcmp(buf[0], "sort") == 0)
+        {
+            execv("./sort.o", buf);
+        }
+
         execvp(buf[0], buf);
 
-        perror(COLOR_BOLD_RED "invalid input\n"COLOR_DEFAULT);
+        perror(COLOR_BOLD_RED "invalid input\n" COLOR_DEFAULT);
         exit(EXIT_FAILURE);
     }
     else
@@ -184,13 +194,25 @@ void singleExec(char *input, int exec)
             {
                 new_args[i - 1] = buf[i];
             }
+
+            if (strcmp(new_args[0], "head") == 0)
+            {
+                execv("./head.o", new_args);
+            }
+            if (strcmp(new_args[0], "uniq") == 0)
+            {
+                execv("./uniq.o", new_args);
+            }
+            if (strcmp(new_args[0], "sort") == 0)
+            {
+                execv("./sort.o", new_args);
+            }
+
             execvp(new_args[0], new_args);
 
             perror(COLOR_BOLD_RED "invalid input\n" COLOR_DEFAULT);
             exit(EXIT_FAILURE);
         }
-        close(fd_out);
-        close(fd_in);
         wait(NULL);
     }
 }
@@ -211,22 +233,28 @@ void pipeExec(char *input)
         {
             if (pipe(fd[i]) < 0)
             {
-                printf(COLOR_BOLD_RED "Pipe: Creation failed\n"COLOR_DEFAULT);
+                printf(COLOR_BOLD_RED "Pipe: Creation failed\n" COLOR_DEFAULT);
                 return;
             }
         }
+        // char *argv_exec[100];
 
-        pid_t pid = fork();
-        if (pid == 0)
-        { // child
-
+        // pc = tokenize_input(argv_exec, buf[i], " ");
+        if (strstr(buf[i], "exec"))
+        {
             char *command = checkRedirection(buf[i]);
             if (strcmp(command, "error") == 0)
             {
                 return;
             }
 
-            pc = tokenize_input(argv, buf[i], " ");
+            pc = tokenize_input(argv, command, " ");
+            if (strcmp(argv[0], "exec") != 0)
+            {
+                fd_in = -1;
+                fd_out = -1;
+                break;
+            }
 
             if (i == command_count - 1)
             {
@@ -264,26 +292,109 @@ void pipeExec(char *input)
                 close(fd[i - 1][0]);
             }
 
+            char *new_args[100];
+            int count = pc;
+
+            for (int j = 1; j < count; j++)
+            {
+                new_args[j - 1] = argv[j];
+            }
+
+            if (strcmp(new_args[0], "head") == 0)
+            {
+                execv("./head.o", new_args);
+            }
+            if (strcmp(new_args[0], "uniq") == 0)
+            {
+                execv("./uniq.o", new_args);
+            }
+            if (strcmp(new_args[0], "sort") == 0)
+            {
+                execv("./sort.o", new_args);
+            }
+            execvp(new_args[0], new_args);
+            perror(COLOR_BOLD_RED "invalid input " COLOR_DEFAULT);
+            return;
+        }
+
+        pid_t pid = fork();
+        if (pid == 0)
+        { // child
+
+            char *command = checkRedirection(buf[i]);
+            if (strcmp(command, "error") == 0)
+            {
+                return;
+            }
+
+            pc = tokenize_input(argv, command, " ");
+
+            if (i == command_count - 1)
+            {
+                if (fd_in < 0)
+                {
+                    dup2(fd[i - 1][0], 0);
+                }
+
+                close(fd[i - 1][1]);
+                close(fd[i - 1][0]);
+            }
+
+            else if (i == 0)
+            {
+                if (fd_out < 0)
+                {
+                    dup2(fd[i][1], 1);
+                }
+                close(fd[i][0]);
+                close(fd[i][1]);
+            }
+            else
+            {
+                if (fd_out < 0)
+                {
+                    dup2(fd[i][1], 1);
+                }
+                if (fd_in < 0)
+                {
+                    dup2(fd[i - 1][0], 0);
+                }
+                close(fd[i][0]);
+                close(fd[i][1]);
+                close(fd[i - 1][1]);
+                close(fd[i - 1][0]);
+            }
+
+            if (strcmp(argv[0], "head") == 0)
+            {
+                execv("./head.o", argv);
+            }
+            if (strcmp(argv[0], "uniq") == 0)
+            {
+                execv("./uniq.o", argv);
+            }
+            if (strcmp(argv[0], "sort") == 0)
+            {
+                execv("./sort.o", argv);
+            }
+
             execvp(argv[0], argv);
             perror(COLOR_BOLD_RED "invalid input " COLOR_DEFAULT);
-            exit(1); // in case exec is not successfull, exit
+            return;
         }
         else if (pid < 0)
         {
             perror(COLOR_BOLD_RED "process creation error.\n" COLOR_DEFAULT);
-            exit(EXIT_FAILURE);
+            return;
         }
 
-        // else
-        // { // parent
         if (i != 0)
         {
             close(fd[i - 1][0]);
             close(fd[i - 1][1]);
         }
-        // }
-        wait(NULL);
     }
+    wait(NULL);
 }
 
 void printInfo()
@@ -310,23 +421,6 @@ void handleInput(char *input)
     else
     {
         tokenize_input(buf, input, " ");
-
-        if (strstr(buf[0], "cd"))
-        {
-            chdir(buf[1]);
-        }
-        else if (strstr(buf[0], "exit"))
-        {
-            exit(EXIT_SUCCESS);
-        }
-        else if (strstr(buf[0], "exec"))
-        {
-            singleExec(input_copy, 1);
-        }
-        else
-        {
-            singleExec(input_copy, 0);
-        }
     }
 }
 
@@ -335,17 +429,11 @@ int main()
     init();
     while (1)
     {
-        // dup2(stdin,0);
-        // dup2(stdout,1);
-        fflush(stdout);
-        fflush(stdin);
+        wait(NULL);
         printInfo();
 
         char input[512];
-
         fgets(input, 512, stdin);
-        // printf("%s", input);
-
         handleInput(input);
     }
 
