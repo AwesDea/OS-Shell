@@ -194,12 +194,14 @@ void singleExec(char *input, int exec)
             char *buf[100];
             int pc = tokenize_input(buf, command, " ", 0);
             char *new_args[100];
+        memset(new_args, 0, sizeof(new_args));
             int count = pc;
 
             for (int i = 1; i < count; i++)
             {
                 new_args[i - 1] = buf[i];
             }
+            new_args[pc] = NULL;
 
             if (strcmp(new_args[0], "head") == 0)
             {
@@ -248,88 +250,6 @@ void pipeExec(char *input)
         if (pid == 0)
         { // child
 
-            // char *argv_exec[100];
-            // char exec_cpy[100];
-            // strcpy(exec_cpy, buf[i]);
-
-            // int pc = tokenize_input(argv_exec, exec_cpy, " ");
-            // if (strstr(buf[i], "exec"))
-            // {
-            //     char *command = checkRedirection(buf[i]);
-            //     if (strcmp(command, "error") == 0)
-            //     {
-            //         return;
-            //     }
-
-            //     pc = tokenize_input(argv, command, " ");
-            //     if (strcmp(argv[0], "exec") != 0)
-            //     {
-            //         fd_in = -1;
-            //         fd_out = -1;
-            //         break;
-            //     }
-
-            //     if (i == command_count - 1)
-            //     {
-            //         if (fd_in < 0)
-            //         {
-            //             dup2(fd[i - 1][0], 0);
-            //         }
-
-            //         close(fd[i - 1][1]);
-            //         close(fd[i - 1][0]);
-            //     }
-
-            //     else if (i == 0)
-            //     {
-            //         if (fd_out < 0)
-            //         {
-            //             dup2(fd[i][1], 1);
-            //         }
-            //         close(fd[i][0]);
-            //         close(fd[i][1]);
-            //     }
-            //     else
-            //     {
-            //         if (fd_out < 0)
-            //         {
-            //             dup2(fd[i][1], 1);
-            //         }
-            //         if (fd_in < 0)
-            //         {
-            //             dup2(fd[i - 1][0], 0);
-            //         }
-            //         close(fd[i][0]);
-            //         close(fd[i][1]);
-            //         close(fd[i - 1][1]);
-            //         close(fd[i - 1][0]);
-            //     }
-
-            //     char *new_args[100];
-            //     int count = pc;
-
-            //     for (int j = 1; j < count; j++)
-            //     {
-            //         new_args[j - 1] = argv[j];
-            //     }
-
-            //     if (strcmp(new_args[0], "head") == 0)
-            //     {
-            //         execv("./head.o", new_args);
-            //     }
-            //     if (strcmp(new_args[0], "uniq") == 0)
-            //     {
-            //         execv("./uniq.o", new_args);
-            //     }
-            //     if (strcmp(new_args[0], "sort") == 0)
-            //     {
-            //         execv("./sort.o", new_args);
-            //     }
-            //     execvp(new_args[0], new_args);
-            //     perror(COLOR_BOLD_RED "invalid input " COLOR_DEFAULT);
-            //     return;
-            // }
-
             char *command = checkRedirection(buf[i]);
             if (strcmp(command, "error") == 0)
             {
@@ -373,36 +293,6 @@ void pipeExec(char *input)
                 close(fd[i - 1][1]);
                 close(fd[i - 1][0]);
             }
-
-            // if (strstr(argv[0], "exec") == 0)
-            // {
-            //     char *new_args[100];
-            //     int count = pc;
-            //     int j;
-            //     for (j = 1; j < count; j++)
-            //     {
-            //         strcpy(new_args[j - 1], argv[j]);
-            //     }
-            //     new_args[j] = NULL;
-            //     if (strcmp(argv[0], "head") == 0)
-            //     {
-            //         execv("./head.o", new_args);
-            //     }
-            //     if (strcmp(new_args[0], "uniq") == 0)
-            //     {
-            //         execv("./uniq.o", new_args);
-            //     }
-            //     if (strcmp(new_args[0], "sort") == 0)
-            //     {
-            //         execv("./sort.o", new_args);
-            //     }
-            //     printf("%s - %s", new_args[0], new_args[1]);
-
-            //     execvp(new_args[0], new_args);
-            //     perror(COLOR_BOLD_RED "invalid input " COLOR_DEFAULT);
-            //     printf("%s - %s", new_args[0], new_args[1]);
-            //     return;
-            // }
 
             if (strcmp(argv[0], "head") == 0)
             {
