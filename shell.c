@@ -24,7 +24,7 @@ int fd_out = -1;
 // initiating shell
 void init()
 {
-    printf("\n\n*************************\n\n" COLOR_BOLD_RED "Welcome to Amin's Shell!\nYou can Use the following commands in my Shell:" COLOR_DEFAULT "\n\n*************************\n\n");
+    printf("\n\n*************************\n\n" COLOR_BOLD_RED "Welcome to Amin's Shell!\nSay Her Name - #MahsaAmini" COLOR_DEFAULT "\n\n*************************\n\n");
 }
 
 int max(int a, int b)
@@ -35,7 +35,7 @@ int max(int a, int b)
     return a;
 }
 
-int tokenize_input(char **par, char *input, const char *c)
+int tokenize_input(char **par, char *input, const char *c, int pipe_flag)
 {
     int counter = -1;
     char *token;
@@ -43,6 +43,12 @@ int tokenize_input(char **par, char *input, const char *c)
 
     while (token)
     {
+        if (pipe_flag && (strcmp(token, "exec") == 0))
+        {
+            token = strtok(NULL, c);
+            continue;
+        }
+
         par[++counter] = malloc(sizeof(token) + 1);
         strcpy(par[counter], token);
 
@@ -95,7 +101,7 @@ char *checkRedirection(char *command)
     }
     char *buf[100];
 
-    int pc = tokenize_input(buf, command, "><>>");
+    int pc = tokenize_input(buf, command, "><>>", 0);
     int file_mod = O_WRONLY | O_CREAT;
     if (max(input, output) > (pc - 1))
     {
@@ -156,7 +162,7 @@ void singleExec(char *input, int exec)
             return;
         }
         char *buf[100];
-        int pc = tokenize_input(buf, command, " ");
+        int pc = tokenize_input(buf, command, " ", 0);
 
         if (strcmp(buf[0], "head") == 0)
         {
@@ -174,7 +180,7 @@ void singleExec(char *input, int exec)
         execvp(buf[0], buf);
 
         perror(COLOR_BOLD_RED "invalid input\n" COLOR_DEFAULT);
-        exit(EXIT_FAILURE);
+        return;
     }
     else
     { // parent
@@ -186,7 +192,7 @@ void singleExec(char *input, int exec)
                 return;
             }
             char *buf[100];
-            int pc = tokenize_input(buf, command, " ");
+            int pc = tokenize_input(buf, command, " ", 0);
             char *new_args[100];
             int count = pc;
 
@@ -211,7 +217,7 @@ void singleExec(char *input, int exec)
             execvp(new_args[0], new_args);
 
             perror(COLOR_BOLD_RED "invalid input\n" COLOR_DEFAULT);
-            exit(EXIT_FAILURE);
+            return;
         }
         wait(NULL);
     }
@@ -220,7 +226,7 @@ void singleExec(char *input, int exec)
 void pipeExec(char *input)
 {
     char *buf[100];
-    int command_count = tokenize_input(buf, input, "|");
+    int command_count = tokenize_input(buf, input, "|", 0);
     int fd[command_count + 1][2], pc;
     char *argv[100];
 
@@ -237,97 +243,100 @@ void pipeExec(char *input)
                 return;
             }
         }
-        // char *argv_exec[100];
-
-        // pc = tokenize_input(argv_exec, buf[i], " ");
-        if (strstr(buf[i], "exec"))
-        {
-            char *command = checkRedirection(buf[i]);
-            if (strcmp(command, "error") == 0)
-            {
-                return;
-            }
-
-            pc = tokenize_input(argv, command, " ");
-            if (strcmp(argv[0], "exec") != 0)
-            {
-                fd_in = -1;
-                fd_out = -1;
-                break;
-            }
-
-            if (i == command_count - 1)
-            {
-                if (fd_in < 0)
-                {
-                    dup2(fd[i - 1][0], 0);
-                }
-
-                close(fd[i - 1][1]);
-                close(fd[i - 1][0]);
-            }
-
-            else if (i == 0)
-            {
-                if (fd_out < 0)
-                {
-                    dup2(fd[i][1], 1);
-                }
-                close(fd[i][0]);
-                close(fd[i][1]);
-            }
-            else
-            {
-                if (fd_out < 0)
-                {
-                    dup2(fd[i][1], 1);
-                }
-                if (fd_in < 0)
-                {
-                    dup2(fd[i - 1][0], 0);
-                }
-                close(fd[i][0]);
-                close(fd[i][1]);
-                close(fd[i - 1][1]);
-                close(fd[i - 1][0]);
-            }
-
-            char *new_args[100];
-            int count = pc;
-
-            for (int j = 1; j < count; j++)
-            {
-                new_args[j - 1] = argv[j];
-            }
-
-            if (strcmp(new_args[0], "head") == 0)
-            {
-                execv("./head.o", new_args);
-            }
-            if (strcmp(new_args[0], "uniq") == 0)
-            {
-                execv("./uniq.o", new_args);
-            }
-            if (strcmp(new_args[0], "sort") == 0)
-            {
-                execv("./sort.o", new_args);
-            }
-            execvp(new_args[0], new_args);
-            perror(COLOR_BOLD_RED "invalid input " COLOR_DEFAULT);
-            return;
-        }
 
         pid_t pid = fork();
         if (pid == 0)
         { // child
 
+            // char *argv_exec[100];
+            // char exec_cpy[100];
+            // strcpy(exec_cpy, buf[i]);
+
+            // int pc = tokenize_input(argv_exec, exec_cpy, " ");
+            // if (strstr(buf[i], "exec"))
+            // {
+            //     char *command = checkRedirection(buf[i]);
+            //     if (strcmp(command, "error") == 0)
+            //     {
+            //         return;
+            //     }
+
+            //     pc = tokenize_input(argv, command, " ");
+            //     if (strcmp(argv[0], "exec") != 0)
+            //     {
+            //         fd_in = -1;
+            //         fd_out = -1;
+            //         break;
+            //     }
+
+            //     if (i == command_count - 1)
+            //     {
+            //         if (fd_in < 0)
+            //         {
+            //             dup2(fd[i - 1][0], 0);
+            //         }
+
+            //         close(fd[i - 1][1]);
+            //         close(fd[i - 1][0]);
+            //     }
+
+            //     else if (i == 0)
+            //     {
+            //         if (fd_out < 0)
+            //         {
+            //             dup2(fd[i][1], 1);
+            //         }
+            //         close(fd[i][0]);
+            //         close(fd[i][1]);
+            //     }
+            //     else
+            //     {
+            //         if (fd_out < 0)
+            //         {
+            //             dup2(fd[i][1], 1);
+            //         }
+            //         if (fd_in < 0)
+            //         {
+            //             dup2(fd[i - 1][0], 0);
+            //         }
+            //         close(fd[i][0]);
+            //         close(fd[i][1]);
+            //         close(fd[i - 1][1]);
+            //         close(fd[i - 1][0]);
+            //     }
+
+            //     char *new_args[100];
+            //     int count = pc;
+
+            //     for (int j = 1; j < count; j++)
+            //     {
+            //         new_args[j - 1] = argv[j];
+            //     }
+
+            //     if (strcmp(new_args[0], "head") == 0)
+            //     {
+            //         execv("./head.o", new_args);
+            //     }
+            //     if (strcmp(new_args[0], "uniq") == 0)
+            //     {
+            //         execv("./uniq.o", new_args);
+            //     }
+            //     if (strcmp(new_args[0], "sort") == 0)
+            //     {
+            //         execv("./sort.o", new_args);
+            //     }
+            //     execvp(new_args[0], new_args);
+            //     perror(COLOR_BOLD_RED "invalid input " COLOR_DEFAULT);
+            //     return;
+            // }
+
             char *command = checkRedirection(buf[i]);
             if (strcmp(command, "error") == 0)
             {
                 return;
             }
 
-            pc = tokenize_input(argv, command, " ");
+            pc = tokenize_input(argv, command, " ", 1);
 
             if (i == command_count - 1)
             {
@@ -364,6 +373,36 @@ void pipeExec(char *input)
                 close(fd[i - 1][1]);
                 close(fd[i - 1][0]);
             }
+
+            // if (strstr(argv[0], "exec") == 0)
+            // {
+            //     char *new_args[100];
+            //     int count = pc;
+            //     int j;
+            //     for (j = 1; j < count; j++)
+            //     {
+            //         strcpy(new_args[j - 1], argv[j]);
+            //     }
+            //     new_args[j] = NULL;
+            //     if (strcmp(argv[0], "head") == 0)
+            //     {
+            //         execv("./head.o", new_args);
+            //     }
+            //     if (strcmp(new_args[0], "uniq") == 0)
+            //     {
+            //         execv("./uniq.o", new_args);
+            //     }
+            //     if (strcmp(new_args[0], "sort") == 0)
+            //     {
+            //         execv("./sort.o", new_args);
+            //     }
+            //     printf("%s - %s", new_args[0], new_args[1]);
+
+            //     execvp(new_args[0], new_args);
+            //     perror(COLOR_BOLD_RED "invalid input " COLOR_DEFAULT);
+            //     printf("%s - %s", new_args[0], new_args[1]);
+            //     return;
+            // }
 
             if (strcmp(argv[0], "head") == 0)
             {
@@ -394,7 +433,8 @@ void pipeExec(char *input)
             close(fd[i - 1][1]);
         }
     }
-    wait(NULL);
+    while (wait(NULL) > 0)
+        ;
 }
 
 void printInfo()
@@ -420,7 +460,24 @@ void handleInput(char *input)
     }
     else
     {
-        tokenize_input(buf, input, " ");
+        tokenize_input(buf, input, " ", 0);
+
+        if (strstr(buf[0], "cd"))
+        {
+            chdir(buf[1]);
+        }
+        else if (strstr(buf[0], "exit"))
+        {
+            exit(EXIT_SUCCESS);
+        }
+        else if (strstr(buf[0], "exec"))
+        {
+            singleExec(input_copy, 1);
+        }
+        else
+        {
+            singleExec(input_copy, 0);
+        }
     }
 }
 
@@ -429,7 +486,6 @@ int main()
     init();
     while (1)
     {
-        wait(NULL);
         printInfo();
 
         char input[512];

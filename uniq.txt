@@ -7,3 +7,6 @@ Uniq File Test.
 Uniq File Test.
 Uniq File Test.
 C loves life.
+head -n 200 test2.txt | grep ca | sed s/ca/bird/ > sample2
+head -n 200 test.txt | sed s/ca/bird/
+cat test2.txt | grep ca | sed s/ca/bird/ > sample
