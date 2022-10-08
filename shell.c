@@ -86,12 +86,12 @@ char *checkRedirection(char *command)
         //     break;
         if (c == '>')
         {
-            output = index;
-            output_index++;
             if (output_index == 0)
             {
+                output = index;
                 index++;
             }
+            output_index++;
         }
         if (c == '<')
         {
@@ -113,6 +113,8 @@ char *checkRedirection(char *command)
         if (output_index == 2)
         {
             file_mod = file_mod | O_APPEND;
+        } else{
+            file_mod = file_mod | O_TRUNC;
         }
         if ((fd_out = open(buf[output], file_mod, 0666)) < 0)
         {
@@ -194,7 +196,7 @@ void singleExec(char *input, int exec)
             char *buf[100];
             int pc = tokenize_input(buf, command, " ", 0);
             char *new_args[100];
-        memset(new_args, 0, sizeof(new_args));
+            memset(new_args, 0, sizeof(new_args));
             int count = pc;
 
             for (int i = 1; i < count; i++)
